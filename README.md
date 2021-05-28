@@ -25,15 +25,9 @@ instance. See our paper for details.
 ## Citation:
     @inproceedings{zhang-etal-2021-supporting,
     title = "Supporting Clustering with Contrastive Learning",
-    author = "Zhang, Dejiao  and
-      Nan, Feng  and
-      Wei, Xiaokai  and
-      Li, Shang-Wen  and
-      Zhu, Henghui  and
-      McKeown, Kathleen  and
-      Nallapati, Ramesh  and
-      Arnold, Andrew O.  and
-      Xiang, Bing",
+    author = "Zhang, Dejiao  and Nan, Feng  and Wei, Xiaokai  and
+      Li, Shang-Wen  and Zhu, Henghui  and McKeown, Kathleen  and
+      Nallapati, Ramesh  and Arnold, Andrew O.  and Xiang, Bing",
     booktitle = "Proceedings of the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies",
     month = jun,
     year = "2021",
