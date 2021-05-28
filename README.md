@@ -1,4 +1,5 @@
-# Supporting Clustering with Contrastive Learning, NAACL 2021
+# Supporting Clustering with Contrastive Learning
+[SCCL (NAACL 2021)](https://www.aclweb.org/anthology/2021.naacl-main.427.pdf) 
 Dejiao Zhang, Feng Nan, Xiaokai Wei, Shangwen Li, Henghui Zhu,
 Kathleen McKeown, Ramesh Nallapati, Andrew Arnold, and Bing Xiang. 
 
