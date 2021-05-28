@@ -35,5 +35,4 @@ instance. See our paper for details.
     publisher = "Association for Computational Linguistics",
     url = "https://www.aclweb.org/anthology/2021.naacl-main.427",
     pages = "5419--5430",
-    abstract = " ",
-}
+    abstract = " ",}
