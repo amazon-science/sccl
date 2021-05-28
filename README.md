@@ -23,10 +23,23 @@ instance. See our paper for details.
 
 
 ## Citation:
-    @inproceedings{
-		zhang2021sccl,
-		title={Supporting Clustering with Contrastive Learning},
-		author={Dejiao Zhang, Feng Nan, Xiaokai Wei, Daniel Li, Henghui Zhu, Kathleen McKeown, Ramesh Nallapati, Andrew O. Arnold, Bing Xiang},
-		booktitle={NAACL 2021},
-		year={2021},
-	}
+    @inproceedings{zhang-etal-2021-supporting,
+    title = "Supporting Clustering with Contrastive Learning",
+    author = "Zhang, Dejiao  and
+      Nan, Feng  and
+      Wei, Xiaokai  and
+      Li, Shang-Wen  and
+      Zhu, Henghui  and
+      McKeown, Kathleen  and
+      Nallapati, Ramesh  and
+      Arnold, Andrew O.  and
+      Xiang, Bing",
+    booktitle = "Proceedings of the 2021 Conference of the North American Chapter of the Association for Computational Linguistics: Human Language Technologies",
+    month = jun,
+    year = "2021",
+    address = "Online",
+    publisher = "Association for Computational Linguistics",
+    url = "https://www.aclweb.org/anthology/2021.naacl-main.427",
+    pages = "5419--5430",
+    abstract = " ",
+}
