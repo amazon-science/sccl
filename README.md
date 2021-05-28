@@ -1,17 +1,31 @@
-## My Project
+# Supporting Clustering with Contrastive Learning, NAACL 2021
+Dejiao Zhang, Feng Nan, Xiaokai Wei, Shangwen Li, Henghui Zhu,
+Kathleen McKeown, Ramesh Nallapati, Andrew Arnold, and Bing Xiang. 
 
-TODO: Fill this README out!
 
-Be sure to:
+## Requirements
 
-* Change the title in this README
-* Edit your repository description on GitHub
+### Datasets:
+  In additional to the original data, SCCL requires a pair of augmented data for each 
+instance. See our paper for details. 
 
-## Security
+### Dependencies:
+    python==3.6. 
+    pytorch==1.6.0. 
+    sentence-transformers==0.3.8. 
+    transformers==3.3.0. 
+    tensorboardX==2.1.  
 
-See [CONTRIBUTING](CONTRIBUTING.md#security-issue-notifications) for more information.
+## To run the code:
+    1. put your dataset in the folder "./datasamples"  # for some license issue, we are not able to release the dataset now, we'll release the datasets asap
+    2. bash ./scripts/run.sh # you need change the dataset info and results path accordingly
 
-## License
 
-This library is licensed under the MIT-0 License. See the LICENSE file.
-
+## Citation:
+    @inproceedings{
+		zhang2021sccl,
+		title={Supporting Clustering with Contrastive Learning},
+		author={Dejiao Zhang, Feng Nan, Xiaokai Wei, Daniel Li, Henghui Zhu, Kathleen McKeown, Ramesh Nallapati, Andrew O. Arnold, Bing Xiang},
+		booktitle={NAACL 2021},
+		year={2021},
+	}
