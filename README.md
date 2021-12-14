@@ -25,12 +25,15 @@ This repository contains the code for our paper [Supporting Clustering with Cont
 ### SCCL with explicit augmentations 
 
      In additional to the original data, SCCL requires a pair of augmented data for each instance. 
+
      The data format is (text, text1, text2) where text1 and text2 are the column names of augmented pairs. 
      See our NAACL paper for details about the learning objective. 
 
-    download the original datastes from https://github.com/rashadulrakib/short-text-clustering-enhancement/tree/master/data
+    Step-1. download the original datastes from https://github.com/rashadulrakib/short-text-clustering-enhancement/tree/master/data
     
-    then obtain the augmented data using the code in ./AugData/
+    step-2. then obtain the augmented data using the code in ./AugData/
+
+    step-3 run the code via the following:
       
       """
       python3 main.py \
@@ -58,7 +61,8 @@ This repository contains the code for our paper [Supporting Clustering with Cont
 
 ### SCCL with virtual augmentation 
 
-    download the original datastes from https://github.com/rashadulrakib/short-text-clustering-enhancement/tree/master/data
+    Download the original datastes from 
+    https://github.com/rashadulrakib/short-text-clustering-enhancement/tree/master/data
       
       """
       python3 main.py \
