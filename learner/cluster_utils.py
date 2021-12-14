@@ -30,3 +30,7 @@ class KCL(nn.Module):
     def forward(self, prob1, prob2):
         kld = self.kld(prob1, prob2)
         return kld.mean()
+    
+def target_distribution(batch: torch.Tensor) -> torch.Tensor:
+    weight = (batch ** 2) / (torch.sum(batch, 0) + 1e-9)
+    return (weight.t() / torch.sum(weight, 1)).t()
