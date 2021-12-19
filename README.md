@@ -24,19 +24,19 @@ This repository contains the code for our paper [Supporting Clustering with Cont
 
 ### SCCL with explicit augmentations 
 
-     In additional to the original data, SCCL requires a pair of augmented data for each instance. 
+In additional to the original data, SCCL requires a pair of augmented data for each instance. 
 
-     The data format is (text, text1, text2) where text1 and text2 are the column names of augmented pairs. 
-     See our NAACL paper for details about the learning objective. 
+The data format is (text, text1, text2) where text1 and text2 are the column names of augmented pairs. 
+ See our NAACL paper for details about the learning objective. 
 
-    Step-1. download the original datastes from https://github.com/rashadulrakib/short-text-clustering-enhancement/tree/master/data
-    
-    step-2. then obtain the augmented data using the code in ./AugData/
+Step-1. download the original datastes from https://github.com/rashadulrakib/short-text-clustering-enhancement/tree/master/data
 
-    step-3 run the code via the following:
-      
-      """
-      python3 main.py \
+step-2. then obtain the augmented data using the code in ./AugData/
+
+step-3 run the code via the following:
+
+```python
+python3 main.py \
         --resdir $path-to-store-your-results \
         --use_pretrain SBERT \
         --bert distilbert \
@@ -56,16 +56,17 @@ This repository contains the code for our paper [Supporting Clustering with Cont
         --max_iter 3000 \
         --print_freq 100 \
         --gpuid 0 &
-      """
+
+```
 
 
 ### SCCL with virtual augmentation 
 
-    Download the original datastes from 
-    https://github.com/rashadulrakib/short-text-clustering-enhancement/tree/master/data
-      
-      """
-      python3 main.py \
+Download the original datastes from 
+https://github.com/rashadulrakib/short-text-clustering-enhancement/tree/master/data
+
+```python
+python3 main.py \
         --resdir $path-to-store-your-results \
         --use_pretrain SBERT \
         --bert distilbert \
@@ -85,11 +86,15 @@ This repository contains the code for our paper [Supporting Clustering with Cont
         --max_iter 1000 \
         --print_freq 100 \
         --gpuid 1 &
-      """
+
+```
+
 
 
 ## Citation:
-    @inproceedings{zhang-etal-2021-supporting,
+
+```bibtex
+@inproceedings{zhang-etal-2021-supporting,
     title = "Supporting Clustering with Contrastive Learning",
     author = "Zhang, Dejiao  and
       Nan, Feng  and
@@ -108,5 +113,7 @@ This repository contains the code for our paper [Supporting Clustering with Cont
     url = "https://aclanthology.org/2021.naacl-main.427",
     doi = "10.18653/v1/2021.naacl-main.427",
     pages = "5419--5430",
-    abstract = "Unsupervised clustering aims at discovering the semantic categories of data according to some distance measured in the representation space. However, different categories often overlap with each other in the representation space at the beginning of the learning process, which poses a significant challenge for distance-based clustering in achieving good separation between different categories. To this end, we propose Supporting Clustering with Contrastive Learning (SCCL) {--} a novel framework to leverage contrastive learning to promote better separation. We assess the performance of SCCL on short text clustering and show that SCCL significantly advances the state-of-the-art results on most benchmark datasets with 3{\%}-11{\%} improvement on Accuracy and 4{\%}-15{\%} improvement on Normalized Mutual Information. Furthermore, our quantitative analysis demonstrates the effectiveness of SCCL in leveraging the strengths of both bottom-up instance discrimination and top-down clustering to achieve better intra-cluster and inter-cluster distances when evaluated with the ground truth cluster labels.",
-}
+    abstract = "Unsupervised clustering aims at discovering the semantic categories of data according to some distance measured in the representation space. However, different categories often overlap with each other in the representation space at the beginning of the learning process, which poses a significant challenge for distance-based clustering in achieving good separation between different categories. To this end, we propose Supporting Clustering with Contrastive Learning (SCCL) {--} a novel framework to leverage contrastive learning to promote better separation. We assess the performance of SCCL on short text clustering and show that SCCL significantly advances the state-of-the-art results on most benchmark datasets with 3{\%}-11{\%} improvement on Accuracy and 4{\%}-15{\%} improvement on Normalized Mutual Information. Furthermore, our quantitative analysis demonstrates the effectiveness of SCCL in leveraging the strengths of both bottom-up instance discrimination and top-down clustering to achieve better intra-cluster and inter-cluster distances when evaluated with the ground truth cluster labels.",}
+
+```
+    
