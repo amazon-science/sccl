@@ -1,0 +1,10 @@
+torch==1.6.0
+torchvision==0.7.0
+sentence-transformers==2.0.0
+transformers==4.8.1
+tensorboardX==2.4.1
+huggingface-hub==0.0.12
+pandas==1.1.5
+scikit-learn==0.24.1
+numpy==1.19.5
+nlpaug==1.1.7

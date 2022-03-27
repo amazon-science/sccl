@@ -18,7 +18,10 @@ This repository contains the code for our paper [Supporting Clustering with Cont
     pandas==1.1.5
     sklearn==0.24.1
     numpy==1.19.5
-      
+
+```bash
+pip install -r requirements.txt
+```      
 
 ### SCCL with explicit augmentations 
 
@@ -27,19 +30,17 @@ In additional to the original data, SCCL requires a pair of augmented data for e
 The data format is (text, text1, text2) where text1 and text2 are the column names of augmented pairs. 
  See our NAACL paper for details about the learning objective. 
 
-Step-1. download the original datastes from https://github.com/rashadulrakib/short-text-clustering-enhancement/tree/master/data
+Step-1. check and run `bash get_data.sh` (default path is `pre_data`),  download the original datasets from https://github.com/rashadulrakib/short-text-clustering-enhancement/tree/master/data. The `git clone` is commented in get_data.sh , so please take a look before running.
 
-step-2. then obtain the augmented data using the code in ./AugData/
+step-2. then `. preprocess_data.sh` to obtain the augmented data (default in `processed_data`) using the code in ./AugData/. It requires GPU acceleration. Please check the gpuid.
 
 step-3 run the code via the following:
 
 ```python
 python3 main.py \
-        --resdir $path-to-store-your-results \
         --use_pretrain SBERT \
-        --bert distilbert \
-        --datapath $path-to-your-data \
-        --dataname searchsnippets_trans_subst_20 \
+        --bert distilbert  \
+        --dataname agnews_trans_subst_10 \
         --num_classes 8 \
         --text text \
         --label label \
@@ -53,8 +54,7 @@ python3 main.py \
         --batch_size 400 \
         --max_iter 3000 \
         --print_freq 100 \
-        --gpuid 0 &
-
+        --resdir save_path --datapath processed_data --gpuid 0
 ```
 
 
