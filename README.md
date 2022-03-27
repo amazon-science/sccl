@@ -30,9 +30,9 @@ In additional to the original data, SCCL requires a pair of augmented data for e
 The data format is (text, text1, text2) where text1 and text2 are the column names of augmented pairs. 
  See our NAACL paper for details about the learning objective. 
 
-Step-1. check and run `bash get_data.sh` (default path is `pre_data`),  download the original datasets from https://github.com/rashadulrakib/short-text-clustering-enhancement/tree/master/data, 
+Step-1. check and run `bash get_data.sh` (default path is `pre_data`),  download the original datasets from https://github.com/rashadulrakib/short-text-clustering-enhancement/tree/master/data. The `git clone` is commented in get_data.sh , so please take a look before running.
 
-step-2. then `bash preprocess_data.sh` to obtain the augmented data (default in `processed_data`) using the code in ./AugData/
+step-2. then `. preprocess_data.sh` to obtain the augmented data (default in `processed_data`) using the code in ./AugData/. It requires GPU acceleration. Please check the gpuid.
 
 step-3 run the code via the following:
 
