@@ -23,9 +23,9 @@ SBERT_CLASS = {
 def get_optimizer(model, args):
     
     optimizer = torch.optim.Adam([
-        {'params':model.bert.parameters()}, 
-        {'params':model.contrast_head.parameters(), 'lr': args.lr*args.lr_scale},
-        {'params':model.cluster_centers, 'lr': args.lr*args.lr_scale}
+        {'params':model.module.bert.parameters()},
+        {'params':model.module.contrast_head.parameters(), 'lr': args.lr*args.lr_scale},
+        {'params':model.module.cluster_centers, 'lr': args.lr*args.lr_scale}
     ], lr=args.lr)
     
     print(optimizer)

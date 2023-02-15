@@ -7,6 +7,9 @@ Date: 02/26/2021
 
 import os
 import sys
+
+from torch import nn
+
 sys.path.append( './' )
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -29,14 +32,15 @@ def run(args):
     train_loader = dataloader.explict_augmentation_loader(args) if args.augtype == "explicit" else dataloader.virtual_augmentation_loader(args)
 
     # model
-    torch.cuda.set_device(args.gpuid[0])
     bert, tokenizer = get_bert(args)
     
     # initialize cluster centers
-    cluster_centers = get_kmeans_centers(bert, tokenizer, train_loader, args.num_classes, args.max_length)
+    cluster_centers = get_kmeans_centers(nn.DataParallel(bert), tokenizer, train_loader, args.num_classes, args.max_length)
     
-    model = SCCLBert(bert, tokenizer, cluster_centers=cluster_centers, alpha=args.alpha) 
-    model = model.cuda()
+    model = SCCLBert(bert, tokenizer, cluster_centers=cluster_centers, alpha=args.alpha)
+    model = nn.DataParallel(model)
+    model.cuda()
+    model.train()
 
     # optimizer 
     optimizer = get_optimizer(model, args)
@@ -51,7 +55,7 @@ def get_args(argv):
     parser.add_argument('--train_instance', type=str, default='local') 
     parser.add_argument('--gpuid', nargs="+", type=int, default=[0], help="The list of gpuid, ex:--gpuid 3 1. Negative value means cpu-only")
     parser.add_argument('--seed', type=int, default=0, help="")
-    parser.add_argument('--print_freq', type=float, default=100, help="")
+    parser.add_argument('--print_freq', type=float, default=500, help="")
     parser.add_argument('--resdir', type=str, default='./results/')
     parser.add_argument('--s3_resdir', type=str, default='./results')
     
@@ -70,7 +74,7 @@ def get_args(argv):
     # Learning parameters
     parser.add_argument('--lr', type=float, default=1e-5, help="")
     parser.add_argument('--lr_scale', type=int, default=100, help="")
-    parser.add_argument('--max_iter', type=int, default=1000)
+    parser.add_argument('--max_iter', type=int, default=100000)
     # contrastive learning
     parser.add_argument('--objective', type=str, default='contrastive')
     parser.add_argument('--augtype', type=str, default='virtual', choices=['virtual', 'explicit'])

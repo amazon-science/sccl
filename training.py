@@ -7,6 +7,8 @@ Date: 02/26/2021
 
 import os
 import time
+from datetime import datetime
+
 import numpy as np
 from sklearn import cluster
 
@@ -48,7 +50,7 @@ class SCCLvTrainer(nn.Module):
         
 
     def prepare_transformer_input(self, batch):
-        if len(batch) == 4:
+        if len(batch) == 3:
             text1, text2, text3 = batch['text'], batch['augmentation_1'], batch['augmentation_2']
             feat1 = self.get_batch_token(text1)
             feat2 = self.get_batch_token(text2)
@@ -57,7 +59,7 @@ class SCCLvTrainer(nn.Module):
             input_ids = torch.cat([feat1['input_ids'].unsqueeze(1), feat2['input_ids'].unsqueeze(1), feat3['input_ids'].unsqueeze(1)], dim=1)
             attention_mask = torch.cat([feat1['attention_mask'].unsqueeze(1), feat2['attention_mask'].unsqueeze(1), feat3['attention_mask'].unsqueeze(1)], dim=1)
             
-        elif len(batch) == 2:
+        elif len(batch) == 1:
             text = batch['text']
             feat1 = self.get_batch_token(text)
             feat2 = self.get_batch_token(text)
@@ -73,13 +75,13 @@ class SCCLvTrainer(nn.Module):
         embd1, embd2 = self.model(input_ids, attention_mask, task_type="virtual")
 
         # Instance-CL loss
-        feat1, feat2 = self.model.contrast_logits(embd1, embd2)
+        feat1, feat2 = self.model.module.contrast_logits(embd1, embd2)
         losses = self.contrast_loss(feat1, feat2)
         loss = self.eta * losses["loss"]
         
         # Clustering loss
         if self.args.objective == "SCCL":
-            output = self.model.get_cluster_prob(embd1)
+            output = self.model.module.get_cluster_prob(embd1)
             target = target_distribution(output).detach()
             
             cluster_loss = self.cluster_loss((output+1e-08).log(), target)/output.shape[0]
@@ -87,6 +89,7 @@ class SCCLvTrainer(nn.Module):
             losses["cluster_loss"] = cluster_loss.item()
 
         loss.backward()
+        losses["total"] = loss.detach().cpu().mean().item()
         self.optimizer.step()
         self.optimizer.zero_grad()
         return losses
@@ -97,13 +100,13 @@ class SCCLvTrainer(nn.Module):
         embd1, embd2, embd3 = self.model(input_ids, attention_mask, task_type="explicit")
 
         # Instance-CL loss
-        feat1, feat2 = self.model.contrast_logits(embd2, embd3)
+        feat1, feat2 = self.model.module.contrast_logits(embd2, embd3)
         losses = self.contrast_loss(feat1, feat2)
         loss = self.eta * losses["loss"]
 
         # Clustering loss
         if self.args.objective == "SCCL":
-            output = self.model.get_cluster_prob(embd1)
+            output = self.model.module.get_cluster_prob(embd1)
             target = target_distribution(output).detach()
             
             cluster_loss = self.cluster_loss((output+1e-08).log(), target)/output.shape[0]
@@ -111,6 +114,7 @@ class SCCLvTrainer(nn.Module):
             losses["cluster_loss"] = cluster_loss.item()
 
         loss.backward()
+        losses["total"] = loss.detach().cpu().mean().item()
         self.optimizer.step()
         self.optimizer.zero_grad()
         return losses
@@ -118,7 +122,8 @@ class SCCLvTrainer(nn.Module):
     
     def train(self):
         print('\n={}/{}=Iterations/Batches'.format(self.args.max_iter, len(self.train_loader)))
-
+        best_avg_loss = 10**10
+        total_losses = []
         self.model.train()
         for i in np.arange(self.args.max_iter+1):
             try:
@@ -130,10 +135,19 @@ class SCCLvTrainer(nn.Module):
             input_ids, attention_mask = self.prepare_transformer_input(batch)
 
             losses = self.train_step_virtual(input_ids, attention_mask) if self.args.augtype == "virtual" else self.train_step_explicit(input_ids, attention_mask)
-
+            total_losses.append(losses["total"])
             if (self.args.print_freq>0) and ((i%self.args.print_freq==0) or (i==self.args.max_iter)):
                 statistics_log(self.args.tensorboard, losses=losses, global_step=i)
-                self.evaluate_embedding(i)
+                # self.evaluate_embedding(i)
+                current_avg_loss = np.average(total_losses)
+                print(f"current_avg_loss={current_avg_loss}, best_avg_loss={best_avg_loss}")
+                if current_avg_loss < best_avg_loss:
+                    best_avg_loss = current_avg_loss
+                    print(f"Saving weights...")
+                    now = datetime.now().isoformat()
+                    weights_path = os.path.join(self.args.resdir, f"weights_{i}_{now}.pt")
+                    torch.save(self.model.module.state_dict(), weights_path)
+                total_losses = []
                 self.model.train()
 
         return None   
@@ -146,7 +160,7 @@ class SCCLvTrainer(nn.Module):
         self.model.eval()
         for i, batch in enumerate(dataloader):
             with torch.no_grad():
-                text, label = batch['text'], batch['label'] 
+                text, label = batch['text'], batch['label']
                 feat = self.get_batch_token(text)
                 embeddings = self.model(feat['input_ids'].cuda(), feat['attention_mask'].cuda(), task_type="evaluate")
 

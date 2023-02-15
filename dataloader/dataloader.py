@@ -24,18 +24,17 @@ class VirtualAugSamples(Dataset):
 
     
 class ExplitAugSamples(Dataset):
-    def __init__(self, train_x, train_x1, train_x2, train_y):
-        assert len(train_y) == len(train_x) == len(train_x1) == len(train_x2)
+    def __init__(self, train_x, train_x1, train_x2):
+        assert len(train_x) == len(train_x1) == len(train_x2)
         self.train_x = train_x
         self.train_x1 = train_x1
         self.train_x2 = train_x2
-        self.train_y = train_y
-        
+
     def __len__(self):
-        return len(self.train_y)
+        return len(self.train_x)
 
     def __getitem__(self, idx):
-        return {'text': self.train_x[idx], 'augmentation_1': self.train_x1[idx], 'augmentation_2': self.train_x2[idx], 'label': self.train_y[idx]}
+        return {'text': self.train_x[idx], 'augmentation_1': self.train_x1[idx], 'augmentation_2': self.train_x2[idx]}
        
 
 def explict_augmentation_loader(args):
@@ -43,9 +42,9 @@ def explict_augmentation_loader(args):
     train_text = train_data[args.text].fillna('.').values
     train_text1 = train_data[args.augmentation_1].fillna('.').values
     train_text2 = train_data[args.augmentation_2].fillna('.').values
-    train_label = train_data[args.label].astype(int).values
+    # train_label = train_data[args.label].astype(int).values
 
-    train_dataset = ExplitAugSamples(train_text, train_text1, train_text2, train_label)
+    train_dataset = ExplitAugSamples(train_text, train_text1, train_text2)
     train_loader = util_data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
     return train_loader
 
