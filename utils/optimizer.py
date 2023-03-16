@@ -21,12 +21,30 @@ SBERT_CLASS = {
 
 
 def get_optimizer(model, args):
-    
+
     optimizer = torch.optim.Adam([
         {'params':model.bert.parameters()}, 
         {'params':model.contrast_head.parameters(), 'lr': args.lr*args.lr_scale},
         {'params':model.cluster_centers, 'lr': args.lr*args.lr_scale}
     ], lr=args.lr)
+    
+    print(optimizer)
+    return optimizer 
+
+
+def get_optimizer_linear_transformation(model, args, include_contrastive_loss=False, linear_transformation=False):
+    param_list = [
+        {'params':model.cluster_centers, 'lr': args.lr*args.lr_scale}
+    ]
+
+    if linear_transformation:
+        param_list.append({'params':model.linear_matrix.parameters(), 'lr': args.lr*args.lr_scale})
+
+    if include_contrastive_loss:
+        param_list.append({'params':model.contrast_head.parameters(), 'lr': args.lr*args.lr_scale})
+
+    # optimizer = torch.optim.Adam(param_list, lr=args.lr)
+    optimizer = torch.optim.SGD(param_list, lr=args.lr, momentum=0.9)
     
     print(optimizer)
     return optimizer 

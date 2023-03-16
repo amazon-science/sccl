@@ -39,7 +39,7 @@ class ExplitAugSamples(Dataset):
        
 
 def explict_augmentation_loader(args):
-    train_data = pd.read_csv(os.path.join(args.datapath, args.dataname+".csv"))
+    train_data = pd.read_csv(os.path.join(args.datapath, args.dataname+".csv"), delimiter="\t")
     train_text = train_data[args.text].fillna('.').values
     train_text1 = train_data[args.augmentation_1].fillna('.').values
     train_text2 = train_data[args.augmentation_2].fillna('.').values
@@ -51,7 +51,7 @@ def explict_augmentation_loader(args):
 
 
 def virtual_augmentation_loader(args):
-    train_data = pd.read_csv(os.path.join(args.datapath, args.dataname+".csv"))
+    train_data = pd.read_csv(os.path.join(args.datapath, args.dataname+".csv"), delimiter="\t")
     train_text = train_data[args.text].fillna('.').values
     train_label = train_data[args.label].astype(int).values
 
@@ -61,7 +61,7 @@ def virtual_augmentation_loader(args):
 
 
 def unshuffle_loader(args):
-    train_data = pd.read_csv(os.path.join(args.datapath, args.dataname+".csv"))
+    train_data = pd.read_csv(os.path.join(args.datapath, args.dataname+".csv"), delimiter="\t")
     train_text = train_data[args.text].fillna('.').values
     train_label = train_data[args.label].astype(int).values
 

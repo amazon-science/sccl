@@ -29,6 +29,7 @@ class PairConLoss(nn.Module):
         
         pos = torch.exp(torch.sum(features_1*features_2, dim=-1) / self.temperature)
         pos = torch.cat([pos, pos], dim=0)
+
         neg = torch.exp(torch.mm(features, features.t().contiguous()) / self.temperature)
         neg = neg.masked_select(mask).view(2*batch_size, -1)
         

@@ -40,7 +40,7 @@ def run(args):
 
     # optimizer 
     optimizer = get_optimizer(model, args)
-    
+
     trainer = SCCLvTrainer(model, tokenizer, optimizer, train_loader, args)
     trainer.train()
     
