@@ -285,7 +285,7 @@ class MatrixDECTrainer(nn.Module):
             n_samples_in_cluster = np.bincount(labels, minlength=cluster_centers.shape[0])
             empty_clusters = np.where(n_samples_in_cluster == 0)[0]
             if len(empty_clusters) > 0:
-                breakpoint()
+                print("Empty cluster found!!!")
 
             param.data.copy_(torch.tensor(cluster_centers, requires_grad=True, device=param.device))
 
