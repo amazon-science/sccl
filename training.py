@@ -5,6 +5,7 @@ Author: Dejiao Zhang (dejiaoz@amazon.com)
 Date: 02/26/2021
 """
 
+import copy
 import os
 import time
 import numpy as np
@@ -401,6 +402,213 @@ class MatrixDECTrainer(nn.Module):
 
             batch = batch.to(self.device)
             losses = self.train_step(batch, i=i, new_batch= i > 0 and (i % 50 == 0 or i == self.args.max_iter - 2))
+
+            # TODO(Vijay): add test metrics to losses given to tensorboard
+
+
+            if (self.args.print_freq>0) and ((i%self.args.print_freq==0) or (i==self.args.max_iter)):
+                all_pred, rand_score = self.evaluate_embedding(i)
+                losses["rand_score"] = rand_score
+
+                if self.canonicalization_side_information is not None and self.canonicalization_test_function is not None:
+                    ave_prec, ave_recall, ave_f1, macro_prec, micro_prec, pair_prec, macro_recall, micro_recall, pair_recall, macro_f1, micro_f1, pairwise_f1, model_clusters, model_Singletons, gold_clusters, gold_Singletons  = self.canonicalization_test_function(self.canonicalization_side_information.p, self.canonicalization_side_information.side_info, all_pred, self.canonicalization_side_information.true_ent2clust, self.canonicalization_side_information.true_clust2ent)
+                    losses["macro_f1"] = macro_f1
+                    losses["micro_f1"] = micro_f1
+                    losses["pairwise_f1"] = pairwise_f1
+
+                if prev_labels is None:
+                    prev_labels = all_pred
+                else:
+                    cur_labels = all_pred
+                    agreement_with_previous = sklearn.metrics.adjusted_rand_score(cur_labels, prev_labels)
+                    if agreement_with_previous == 1.0:
+                        patience_counter += 1
+                        if patience_counter == self.patience:
+                            print(f"Ran out of patience after {i} iterations")
+                            break
+                    else:
+                        patience_counter = 0
+                    prev_labels = cur_labels
+
+
+                statistics_log(self.args.tensorboard, losses=losses, global_step=i)
+
+
+                self.model.train()
+
+        return all_pred
+
+
+class MatrixSCCLTrainer(MatrixDECTrainer):
+    def __init__(self, model, optimizer, train_loader, dataset,
+                 pairwise_constraints,
+                 labels,
+                 args,
+                 include_contrastive_loss=False,
+                 device="cpu",
+                 patience=6,
+                 canonicalization_test_function=None,
+                 canonicalization_side_information=None):
+        super(MatrixDECTrainer, self).__init__()
+        self.model = model
+        assert self.model.__class__.__name__ == "SCCLMatrix"
+
+        self.optimizer = optimizer
+        self.train_loader = train_loader
+        self.args = args
+        self.eta = self.args.eta
+
+        self.cluster_loss = nn.KLDivLoss(size_average=False)
+        self.contrast_loss = PairConLoss(temperature=self.args.temperature)
+        self.include_contrastive_loss = include_contrastive_loss
+
+        self.device = device
+        self.dataset = dataset.astype("float32")
+        self.pairwise_constraints = pairwise_constraints
+        self.labels = labels
+        self.patience = patience
+
+        self.gstep = 0
+        print(f"*****Intialize SCCLv, temp:{self.args.temperature}, eta:{self.args.eta}\n")
+
+        self.canonicalization_test_function = canonicalization_test_function
+        self.canonicalization_side_information = canonicalization_side_information
+
+
+    def train_step(self, points, supervised_cl_batch, i=0, new_batch=False):
+
+        embd1, embd2 = self.model(points, task_type="virtual")
+        # Figure out how corresponding points are distribute inside the batch
+
+        loss = 0.0
+        losses = {}
+
+
+        # Instance-CL loss
+        if self.include_contrastive_loss:
+            feat1, feat2 = self.model.contrast_logits(embd1, embd2)
+            losses.update(self.contrast_loss(feat1, feat2))
+            ucl_loss = self.eta * losses["loss"]
+            loss += ucl_loss
+            losses["unsupervised_cl_loss"] = ucl_loss
+
+            breakpoint()
+
+            if supervised_cl_batch is not None:
+                scl_1, scl_2 = supervised_cl_batch
+                feat1, feat2 = self.model.contrast_logits(scl_1, scl_2)
+                supervised_losses = {}
+                for k, v in self.contrast_loss(feat1, feat2).items():
+                    supervised_losses["supervised_" + k] = v
+
+                losses.update(supervised_losses)
+                ucl_loss = self.eta * losses["loss"]
+                loss += ucl_loss
+                losses["unsupervised_cl_loss"] = ucl_loss
+
+            # TODO(Vijay): implement contrastive learning using Supervised CL loss
+
+        # Clustering loss
+        if self.args.objective == "SCCL":
+            output = self.model.get_cluster_prob(embd1)
+            target = target_distribution(output).detach()
+
+            cluster_loss = self.cluster_loss((output+1e-08).log(), target)/output.shape[0]
+            loss += cluster_loss
+            losses["cluster_loss"] = cluster_loss.item()
+
+        loss.backward()
+        self.optimizer.step()
+        self.optimizer.zero_grad()
+
+        if new_batch:
+            self.find_empty_clusters(iter=i)
+
+        return losses
+
+    def evaluate_embedding(self, step):
+        examples = []
+        for x, y in zip(self.dataset, self.labels):
+            examples.append({"x": x, "y": y})
+
+        dataloader = util_data.DataLoader(examples, batch_size=self.args.batch_size, shuffle=False, num_workers=1)
+        print('---- {} evaluation batches ----'.format(len(dataloader)))
+
+        self.model.eval()
+        for i, batch in enumerate(dataloader):
+            with torch.no_grad():
+                text, label = batch['x'], batch['y'] 
+                embeddings = self.model(batch['x'].cuda(), task_type="evaluate")
+
+                model_prob = self.model.get_cluster_prob(embeddings)
+                if i == 0:
+                    all_labels = label
+                    all_embeddings = embeddings.detach()
+                    all_prob = model_prob
+                else:
+                    all_labels = torch.cat((all_labels, label), dim=0)
+                    all_embeddings = torch.cat((all_embeddings, embeddings.detach()), dim=0)
+                    all_prob = torch.cat((all_prob, model_prob), dim=0)
+
+        all_pred = torch.argmax(all_prob, dim=1).tolist()
+        rand = sklearn.metrics.adjusted_rand_score(all_labels.tolist(), all_pred)
+        print(f"Rand Score: {rand}")
+        return all_pred, rand
+
+    def _construct_supervised_cl_loader(self, concat_vectors):
+        return util_data.DataLoader(concat_vectors.astype("float32"), batch_size=self.args.batch_size, shuffle=True, num_workers=1)
+
+    def train(self):
+        print('\n={}/{}=Iterations/Batches'.format(self.args.max_iter, len(self.train_loader)))
+
+        all_pred, rand_score = self.evaluate_embedding(0)
+        if self.canonicalization_side_information is not None and self.canonicalization_test_function is not None:
+            ave_prec, ave_recall, ave_f1, macro_prec, micro_prec, pair_prec, macro_recall, micro_recall, pair_recall, macro_f1, micro_f1, pairwise_f1, model_clusters, model_Singletons, gold_clusters, gold_Singletons  = self.canonicalization_test_function(self.canonicalization_side_information.p, self.canonicalization_side_information.side_info, all_pred, self.canonicalization_side_information.true_ent2clust, self.canonicalization_side_information.true_clust2ent)
+            print(f"Pre-training performance:\nrand_score:\t{rand_score}\nmacro_f1:\t{macro_f1}\nmicro_f1:\t{micro_f1}\npairwise_f1:\t{pairwise_f1}")
+
+        self.model.train()
+
+        prev_labels = None
+        patience_counter = 0
+
+        ml, _ = self.pairwise_constraints
+        breakpoint()
+        # TODO(Vijay): Construct Supervised CL batches from self.pairwise_constraints
+
+        pair_a = []
+        pair_b = []
+        for (head_idx, tail_idx) in ml:
+            head_vector = self.dataset[head_idx]
+            pair_a.append(head_vector)
+            tail_vector = self.dataset[tail_idx]
+            pair_b.append(tail_vector)
+
+        head_vectors = np.stack(pair_a)
+        tail_vectors = np.stack(pair_b)
+        concat_vectors = np.concatenate([head_vectors, tail_vectors], axis=1)
+
+
+        supervised_cl_batches = []
+        supervised_cl_batch_loader = copy.deepcopy(supervised_cl_batches)
+
+        for i in np.arange(self.args.max_iter+1):
+            try:
+                batch = next(train_loader_iter)
+                new_batch = False
+            except:
+                train_loader_iter = iter(self.train_loader)
+                batch = next(train_loader_iter)
+                supervised_cl_batch_loader = copy.deepcopy(supervised_cl_batches)
+                new_batch = True
+
+            if len(supervised_cl_batch_loader) == 0:
+                supervised_cl_batch = None
+            else:
+                supervised_cl_batch = supervised_cl_batch_loader[0]
+                supervised_cl_batch_loader = supervised_cl_batch_loader[1:]
+
+            batch = batch.to(self.device)
+            losses = self.train_step(batch, supervised_cl_batch, i=i, new_batch= i > 0 and (i % 50 == 0 or i == self.args.max_iter - 2))
 
             # TODO(Vijay): add test metrics to losses given to tensorboard
 
