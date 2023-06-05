@@ -97,6 +97,7 @@ class SCCLMatrix(nn.Module):
         
         self.emb_size = emb_size
 
+        '''
         self.linear_matrix = nn.Linear(self.emb_size, self.emb_size)
         self.linear_matrix.weight.data.copy_(torch.eye(self.emb_size))
 
@@ -105,7 +106,6 @@ class SCCLMatrix(nn.Module):
                 nn.Linear(self.emb_size, 128),
                 nn.ReLU(inplace=True),
                 nn.Linear(128, self.emb_size))
-        '''
 
 
         self.alpha = alpha
@@ -138,12 +138,12 @@ class SCCLMatrix(nn.Module):
             points1 = points
             with torch.no_grad():
                 unit_gaussian_noise = torch.randn(points.shape, device=points.device)
-                std = torch.pow(torch.var(points, dim=0), 0.5) / 8
+                std = torch.pow(torch.var(points, dim=0), 0.5) / 16
                 scaled_noise = unit_gaussian_noise * std
                 points2 = points + scaled_noise
             if self.linear_transformation:
                 transformed_points_1 = self.linear_matrix(points1)
-                transformed_points_2 = self.linea==r_matrix(points2)
+                transformed_points_2 = self.linear_matrix(points2)
                 return transformed_points_1, transformed_points_2
             else:
                 return points1, points2

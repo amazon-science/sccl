@@ -487,24 +487,23 @@ class MatrixSCCLTrainer(MatrixDECTrainer):
         # Instance-CL loss
         if self.include_contrastive_loss:
             feat1, feat2 = self.model.contrast_logits(embd1, embd2)
-            losses.update(self.contrast_loss(feat1, feat2))
-            ucl_loss = self.eta * losses["loss"]
+            ucl_loss = self.contrast_loss(feat1, feat2)
+            losses["unsupervised_pos_mean"] = ucl_loss["pos_mean"]
+            losses["unsupervised_neg_mean"] = ucl_loss["neg_mean"]
+            ucl_loss = ucl_loss["loss"]
             loss += ucl_loss
             losses["unsupervised_cl_loss"] = ucl_loss
 
-            breakpoint()
-
             if supervised_cl_batch is not None:
-                scl_1, scl_2 = supervised_cl_batch
+                vector_boundary = int(supervised_cl_batch.shape[1]/2)
+                scl_1, scl_2 = supervised_cl_batch[:, :vector_boundary], supervised_cl_batch[:, vector_boundary:]
                 feat1, feat2 = self.model.contrast_logits(scl_1, scl_2)
-                supervised_losses = {}
-                for k, v in self.contrast_loss(feat1, feat2).items():
-                    supervised_losses["supervised_" + k] = v
-
-                losses.update(supervised_losses)
-                ucl_loss = self.eta * losses["loss"]
-                loss += ucl_loss
-                losses["unsupervised_cl_loss"] = ucl_loss
+                supervised_loss = self.contrast_loss(feat1, feat2)
+                losses["supervised_pos_mean"] = supervised_loss["pos_mean"]
+                losses["supervised_neg_mean"] = supervised_loss["neg_mean"]
+                scl_loss = self.eta * supervised_loss["loss"]
+                loss += scl_loss
+                losses["supervised_cl_loss"] = scl_loss
 
             # TODO(Vijay): implement contrastive learning using Supervised CL loss
 
@@ -520,7 +519,7 @@ class MatrixSCCLTrainer(MatrixDECTrainer):
         loss.backward()
         self.optimizer.step()
         self.optimizer.zero_grad()
-
+ 
         if new_batch:
             self.find_empty_clusters(iter=i)
 
@@ -558,6 +557,23 @@ class MatrixSCCLTrainer(MatrixDECTrainer):
     def _construct_supervised_cl_loader(self, concat_vectors):
         return util_data.DataLoader(concat_vectors.astype("float32"), batch_size=self.args.batch_size, shuffle=True, num_workers=1)
 
+    @staticmethod
+    def shuffle_tensor(tensor):
+        random_indices = torch.randperm(len(tensor))
+        return tensor[random_indices]
+
+    def construct_batches(self, vectors, batch_size):
+        shuffled_vectors = self.shuffle_tensor(vectors)
+        if len(shuffled_vectors) % batch_size != 0:
+            suffix_length = batch_size - len(shuffled_vectors) % batch_size
+            suffix_vectors = self.shuffle_tensor(shuffled_vectors[:suffix_length])
+            shuffled_vectors = torch.cat((shuffled_vectors, suffix_vectors), axis=0)
+        assert len(shuffled_vectors) % batch_size == 0
+        batches = []
+        for i in range(int(len(shuffled_vectors) / batch_size)):
+            batches.append(shuffled_vectors[i*batch_size:(i+1)*batch_size])
+        return batches
+
     def train(self):
         print('\n={}/{}=Iterations/Batches'.format(self.args.max_iter, len(self.train_loader)))
 
@@ -572,8 +588,6 @@ class MatrixSCCLTrainer(MatrixDECTrainer):
         patience_counter = 0
 
         ml, _ = self.pairwise_constraints
-        breakpoint()
-        # TODO(Vijay): Construct Supervised CL batches from self.pairwise_constraints
 
         pair_a = []
         pair_b = []
@@ -585,11 +599,10 @@ class MatrixSCCLTrainer(MatrixDECTrainer):
 
         head_vectors = np.stack(pair_a)
         tail_vectors = np.stack(pair_b)
-        concat_vectors = np.concatenate([head_vectors, tail_vectors], axis=1)
+        concat_vectors = torch.from_numpy(np.concatenate([head_vectors, tail_vectors], axis=1))
+        # Change construct_batches to shuffle a Torch tensor
 
-
-        supervised_cl_batches = []
-        supervised_cl_batch_loader = copy.deepcopy(supervised_cl_batches)
+        supervised_cl_batch_loader = self.construct_batches(concat_vectors, self.args.batch_size)
 
         for i in np.arange(self.args.max_iter+1):
             try:
@@ -598,16 +611,17 @@ class MatrixSCCLTrainer(MatrixDECTrainer):
             except:
                 train_loader_iter = iter(self.train_loader)
                 batch = next(train_loader_iter)
-                supervised_cl_batch_loader = copy.deepcopy(supervised_cl_batches)
                 new_batch = True
 
             if len(supervised_cl_batch_loader) == 0:
-                supervised_cl_batch = None
+                supervised_cl_batch_loader = self.construct_batches(concat_vectors, self.args.batch_size)
             else:
                 supervised_cl_batch = supervised_cl_batch_loader[0]
                 supervised_cl_batch_loader = supervised_cl_batch_loader[1:]
 
             batch = batch.to(self.device)
+
+            supervised_cl_batch = supervised_cl_batch.to(self.device)
             losses = self.train_step(batch, supervised_cl_batch, i=i, new_batch= i > 0 and (i % 50 == 0 or i == self.args.max_iter - 2))
 
             # TODO(Vijay): add test metrics to losses given to tensorboard
@@ -636,7 +650,6 @@ class MatrixSCCLTrainer(MatrixDECTrainer):
                     else:
                         patience_counter = 0
                     prev_labels = cur_labels
-
 
                 statistics_log(self.args.tensorboard, losses=losses, global_step=i)
 
