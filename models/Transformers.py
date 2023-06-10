@@ -138,7 +138,7 @@ class SCCLMatrix(nn.Module):
             points1 = points
             with torch.no_grad():
                 unit_gaussian_noise = torch.randn(points.shape, device=points.device)
-                std = torch.pow(torch.var(points, dim=0), 0.5) / 16
+                std = torch.pow(torch.var(points, dim=0), 0.5) / 8
                 scaled_noise = unit_gaussian_noise * std
                 points2 = points + scaled_noise
             if self.linear_transformation:
@@ -148,6 +148,76 @@ class SCCLMatrix(nn.Module):
             else:
                 return points1, points2
         
+        else:
+            raise NotImplementedError
+
+
+    def get_cluster_prob(self, embeddings):
+        norm_squared = torch.sum((embeddings.unsqueeze(1) - self.cluster_centers) ** 2, 2)
+        numerator = 1.0 / (1.0 + (norm_squared / self.alpha))
+        power = float(self.alpha + 1) / 2
+        numerator = numerator ** power
+        return numerator / torch.sum(numerator, dim=1, keepdim=True)
+
+
+    def contrast_logits(self, embd1, embd2=None):
+        assert self.include_contrastive_loss, "Contrastive head is not enabled for this model"
+        feat1 = F.normalize(self.contrast_head(embd1), dim=1)
+        if embd2 != None:
+            feat2 = F.normalize(self.contrast_head(embd2), dim=1)
+            return feat1, feat2
+        else: 
+            return feat1
+
+
+class SCCLBertTransE(nn.Module):
+    def __init__(self, X, bert_model, kge_model, emb_size, cluster_centers=None, alpha=1.0, include_contrastive_loss=False, linear_transformation=True, canonicalization_side_information=None):
+        super(SCCLBertTransE, self).__init__()
+        
+        self.emb_size = emb_size
+
+        '''
+        self.linear_matrix = nn.Linear(self.emb_size, self.emb_size)
+        self.linear_matrix.weight.data.copy_(torch.eye(self.emb_size))
+
+        '''
+        self.bert = bert_model
+        self.kge = kge_model
+        self.entity_embedding_matrix = torch.nn.Parameter(kge_model.entity_embedding[:len(X), :])
+
+
+        self.alpha = alpha
+        self.include_contrastive_loss = include_contrastive_loss
+
+        # Instance-CL head
+        if self.include_contrastive_loss:
+            self.contrast_head = nn.Sequential(
+                nn.Linear(self.emb_size, self.emb_size),
+                nn.ReLU(inplace=True),
+                nn.Linear(self.emb_size, 128))
+        
+        # Clustering head
+        initial_cluster_centers = torch.tensor(
+            cluster_centers, dtype=torch.float, requires_grad=True)
+        self.cluster_centers = Parameter(initial_cluster_centers)
+        self.canonicalization_side_information = canonicalization_side_information
+    
+    def forward(self, orig_ent_ids, noised_ent_ids, orig_text, noised_text, task_type):
+        if task_type == "evaluate":
+            orig_kge_embeddings = torch.matmul(orig_ent_ids, self.entity_embedding_matrix)
+            orig_cls_token_embeddings, _ = self.bert(orig_text)
+            orig_embeddings = torch.cat((orig_kge_embeddings, orig_cls_token_embeddings), dim=1)
+            return orig_embeddings
+        elif task_type == "explicit":
+            orig_kge_embeddings = torch.matmul(orig_ent_ids, self.entity_embedding_matrix)
+            orig_cls_token_embeddings, _ = self.bert(orig_text)
+            orig_embeddings = torch.cat((orig_kge_embeddings, orig_cls_token_embeddings), dim=1)
+
+            noised_kge_embeddings = torch.matmul(noised_ent_ids, self.entity_embedding_matrix)
+            noised_cls_token_embeddings, _ = self.bert(noised_text)
+            noised_embeddings = torch.cat((noised_kge_embeddings, noised_cls_token_embeddings), dim=1)
+
+            return orig_embeddings, noised_embeddings
         else:
             raise NotImplementedError
 

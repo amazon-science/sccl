@@ -34,11 +34,27 @@ def get_optimizer(model, args):
 
 def get_optimizer_linear_transformation(model, args, include_contrastive_loss=False, linear_transformation=False):
     param_list = [
+        {'params':model.contrast_head.parameters(), 'lr': args.lr*args.lr_scale},
         {'params':model.cluster_centers, 'lr': args.lr*args.lr_scale}
     ]
 
     if linear_transformation:
-        param_list.append({'params':model.linear_matrix.parameters(), 'lr': args.lr})
+        param_list.append({'params':model.linear_matrix.parameters(), 'lr': args.lr*args.lr_scale})
+
+    optimizer = torch.optim.Adam(param_list, lr=args.lr)
+    # optimizer = torch.optim.SGD(param_list, lr=args.lr, momentum=0.9)
+    
+    print(optimizer)
+    return optimizer
+
+
+def get_optimizer_deep_sccl(model, args, include_contrastive_loss=False, linear_transformation=False):
+    param_list = [
+        {'params':model.bert.parameters(), 'lr': args.lr},
+        {'params':model.entity_embedding_matrix, 'lr': args.lr},
+        {'params':model.contrast_head.parameters(), 'lr': args.lr*args.lr_scale},
+        {'params':model.cluster_centers, 'lr': args.lr*args.lr_scale}
+    ]
 
     optimizer = torch.optim.Adam(param_list, lr=args.lr)
     # optimizer = torch.optim.SGD(param_list, lr=args.lr, momentum=0.9)
