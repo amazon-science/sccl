@@ -32,30 +32,22 @@ def get_batch_token(tokenizer, text, max_length):
 def get_kmeans_centers(bert, tokenizer, train_loader, num_classes, max_length):
     for i, batch in enumerate(train_loader):
 
-        text, label = batch['text'], batch['label']
+        text = batch['text']
         tokenized_features = get_batch_token(tokenizer, text, max_length)
         corpus_embeddings = get_mean_embeddings(bert, **tokenized_features)
         
         if i == 0:
-            all_labels = label
             all_embeddings = corpus_embeddings.detach().numpy()
         else:
-            all_labels = torch.cat((all_labels, label), dim=0)
             all_embeddings = np.concatenate((all_embeddings, corpus_embeddings.detach().numpy()), axis=0)
 
     # Perform KMeans clustering
-    confusion = Confusion(num_classes)
     clustering_model = KMeans(n_clusters=num_classes)
     clustering_model.fit(all_embeddings)
-    cluster_assignment = clustering_model.labels_
 
-    true_labels = all_labels
-    pred_labels = torch.tensor(cluster_assignment)    
-    print("all_embeddings:{}, true_labels:{}, pred_labels:{}".format(all_embeddings.shape, len(true_labels), len(pred_labels)))
-
-    confusion.add(pred_labels, true_labels)
-    confusion.optimal_assignment(num_classes)
-    print("Iterations:{}, Clustering ACC:{:.3f}, centers:{}".format(clustering_model.n_iter_, confusion.acc(), clustering_model.cluster_centers_.shape))
+    print("all_embeddings shape:", all_embeddings.shape)
+    print("Iterations:", clustering_model.n_iter_)
+    print("Centers shape:", clustering_model.cluster_centers_.shape)
     
     return clustering_model.cluster_centers_
 
