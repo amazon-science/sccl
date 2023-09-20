@@ -1,10 +1,3 @@
-"""
-Copyright Amazon.com, Inc. or its affiliates. All Rights Reserved
-
-Author: Dejiao Zhang (dejiaoz@amazon.com)
-Date: 02/26/2021
-"""
-
 import os
 import pandas as pd
 import torch.utils.data as util_data
